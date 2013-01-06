@@ -5,7 +5,6 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Threading;
-using System.Windows.Forms;
 using Triton.Memory;
 
 namespace OpenTTDStats
@@ -33,6 +32,14 @@ namespace OpenTTDStats
         }
     }
 
+    public struct TileStats
+    {
+        public int TrainsPassed;
+        public int SpeedSum;
+        public int SpeedMin;
+        public int SpeedMax;
+    }
+
     class Program
     {
         private static int MapSizeX;
@@ -43,7 +50,7 @@ namespace OpenTTDStats
         {
             int samples_max ;
             bool sample = true;
-            var tileBusiness = new int[0];
+            var tileStats = new TileStats[0];
 
             if(sample)
             {
@@ -58,7 +65,7 @@ namespace OpenTTDStats
                     {
                         p = Process.GetProcessesByName("openttd");
                         Thread.Sleep(500);
-                        if (Console.KeyAvailable)
+                        if (Console.KeyAvailable )
                             return;
                     }
                 }
@@ -107,51 +114,66 @@ namespace OpenTTDStats
 
                 MapSizeX = reader.ReadInt32(addr_base + 0x9D5730);
                 MapSizeY = reader.ReadInt32(addr_base + 0x9D5724);
-            tileBusiness = new int[MapSizeX * MapSizeY];
+                tileStats = new TileStats[MapSizeX * MapSizeY];
                 DateTime n = DateTime.Now;
                 int samples = 0;
                 do
                 {
                     samples++;
-                    // We have access.
+
                     var vehiclePtr = reader.ReadInt32(addr_base + 0xA1E828);
                     var vehicleCount = reader.ReadInt32(addr_base + 0xA1E810);
 
                     // what is 3FF476C8 @ vehicleListPtr?
                     // Ptr size -> 6E30 - 7010
                     var calls = 0;
-                    var vehicleListCache = new uint[vehicleCount*2+100]; // 50 extra for good measure.
+                    var vehicleListCache = new int[vehicleCount*2+100]; // 50 extra for good measure.
                     var temp_array = reader.ReadBytes((IntPtr)vehiclePtr, (uint)vehicleListCache.Length * 4);
                     calls++;
                     for (int i = 0; i < vehicleCount+50; i++)
                     {
-                        vehicleListCache[i] = BitConverter.ToUInt32(temp_array, i*8);
+                        vehicleListCache[i] = BitConverter.ToInt32(temp_array, i*8);
 
                     }
 
                     var objects = 0;
                     var trainCnt = 0;
+                    var locoCnt = 0;
+
                     while (trainCnt < vehicleCount)
                     {
                         try
                         {
-                            uint vehicleListPtr = 0;
+                            int vehicleListPtr = 0;
                             if (objects < vehicleListCache.Length)
                                 vehicleListPtr = vehicleListCache[objects];
                             else
                             {
-                                vehicleListPtr = (uint) reader.ReadInt32((IntPtr) vehiclePtr + objects*8);
+                                vehicleListPtr = reader.ReadInt32(vehiclePtr + objects*8);
                                 calls++;
                             }
 
                             if (vehicleListPtr != 0)
                             {
                                 //var veh = reader.ReadInt32((IntPtr) vehicleListPtr);
-                                var tile = reader.ReadInt32((IntPtr) vehicleListPtr + 0x58);
+                                var tile = reader.ReadInt32(vehicleListPtr + 0x58);
                                 calls++;
-                                if (tile >= tileBusiness.Length) break;
+                                if (tile >= tileStats.Length) break;
                                 if (tile != 0)
-                                    tileBusiness[tile]++;
+                                {
+                                    int spd = reader.ReadInt32(vehicleListPtr + 0xF4) >> 16;
+                                    calls++;
+
+                                    if (spd != 0)
+                                    {
+                                        locoCnt++;
+
+                                        tileStats[tile].TrainsPassed++;
+                                        tileStats[tile].SpeedSum += spd;
+                                        tileStats[tile].SpeedMin = Math.Min(tileStats[tile].SpeedMin, spd);
+                                        tileStats[tile].SpeedMax = Math.Min(tileStats[tile].SpeedMax, spd);
+                                    }
+                                }
 
                                 trainCnt++;
                             }
@@ -173,10 +195,10 @@ namespace OpenTTDStats
                         Thread.Sleep((int)Math.Floor(1000.0/25*2 - 1000.0/fps));
                 } while (samples < samples_max);
 
-                StringBuilder bl = new StringBuilder();
-                for (int i = 0; i < tileBusiness.Length; i++)
-                    bl.AppendLine(i + "," + tileBusiness[i]);
-                File.WriteAllText("test.csv", bl.ToString());
+                /*StringBuilder bl = new StringBuilder();
+                for (int i = 0; i < tileStats.Length; i++)
+                    bl.AppendLine(i + "," + tileStats[i].TrainsPassed);
+                File.WriteAllText("test.csv", bl.ToString());*/
             }
             else
             {
@@ -185,7 +207,7 @@ namespace OpenTTDStats
                 Console.WriteLine("Map Y?");
                 MapSizeY = int.Parse(Console.ReadLine());
 
-                tileBusiness = new int[MapSizeX*MapSizeY];
+                tileStats = new TileStats[MapSizeX*MapSizeY];
                 
 
                 var data = File.ReadAllLines("test.csv");
@@ -194,7 +216,7 @@ namespace OpenTTDStats
                 {
                     var ls = l.Trim().Split(',');
                     var v = Int32.Parse(ls[1]);
-                    tileBusiness[Int32.Parse(ls[0])] = v;
+                    tileStats[Int32.Parse(ls[0])] = new TileStats {TrainsPassed = v};
                     if(v < 1000)
                     samples_max = Math.Max(v, samples_max);
                 }
@@ -205,13 +227,14 @@ namespace OpenTTDStats
             g.FillRectangle(new SolidBrush(Color.FromArgb(200, 200, 200)), 0, 0, MapSizeX, MapSizeY);
             
             Dictionary<int, int> frequency = new Dictionary<int, int>();
-            for (int i = 0; i < tileBusiness.Length; i++)
+            for (int i = 0; i < tileStats.Length; i++)
             {
-                var j = tileBusiness[i];
-                if (frequency.ContainsKey(j))
-                    frequency[j]++;
+                var j = tileStats[i];
+                var p = j.TrainsPassed;
+                if (frequency.ContainsKey(p))
+                    frequency[p]++;
                 else
-                    frequency.Add(j, 1);
+                    frequency.Add(p, 1);
             }
 
             var max_value = 0;
@@ -232,25 +255,52 @@ namespace OpenTTDStats
 
             max_value = samples_max;
 
+            // Average speed: max_value =643
+            max_value = 643;
+
             for (int x = 0; x < MapSizeX; x++)
             {
                 for (int y = 0; y < MapSizeY; y++)
                 {
-                    int tile = x * MapSizeY + y;
+                    int tile = x*MapSizeY + y;
+                    if (tileStats[tile].TrainsPassed == 0) continue;
 
-                    var frac = tileBusiness[tile] *1.0 / max_value;
+                    //var frac = tileStats[tile] *1.0 / max_value;
+                    var frac = 1 - tileStats[tile].SpeedSum/tileStats[tile].TrainsPassed*1.0/max_value;
                     if (frac > 1) frac = 1;
-                    if (frac > 0.001)
-                    {
-                        ColorRGB c = HSL2RGB(frac, 0.5, 0.5);
+                    if (frac < 0) frac = 0;
+                    ColorRGB c = HSL2RGB(frac, 0.5, 0.5);
 
-                        b.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
-                    }
+                    b.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+
                 }
             }
 
             var f = "heatmap.png";
             b.Save(f);
+
+            // Legned:
+            Bitmap legend = new Bitmap(max_value, 200);
+            for (int i = 0; i < 643; i++)
+            {
+                for (int y = 0; y < 25; y++)
+                {
+                    var frac = 1-i*1.0/max_value;
+                    ColorRGB c = HSL2RGB(frac, 0.5, 0.5);
+
+                    legend.SetPixel(i, y, Color.FromArgb(c.R, c.G, c.B));
+                }
+            }
+
+            Graphics g2 = Graphics.FromImage(legend);
+            for (int i = 0; i < 650; i += 50)
+            {
+                var frac = i * 1.0 / max_value;
+                g2.DrawLine(new Pen(Brushes.Black, 1), i, 25, i, 38);
+                g2.DrawString(i.ToString(), new Font("Verdana", 10, FontStyle.Regular), Brushes.Black, i-3, 40 );
+            }
+
+                legend.Save("legend.png");
         }
 
         // Given H,S,L in range of 0-1

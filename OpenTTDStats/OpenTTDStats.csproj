@@ -43,17 +43,9 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Triton">
-      <HintPath>..\..\SimTelemetry\Binaries\Triton.dll</HintPath>
-    </Reference>
-    <Reference Include="Triton.Controls">
-      <HintPath>..\..\SimTelemetry\Binaries\Triton.Controls.dll</HintPath>
-    </Reference>
-    <Reference Include="Triton.Database">
-      <HintPath>..\..\SimTelemetry\Binaries\Triton.Database.dll</HintPath>
-    </Reference>
-    <Reference Include="Triton.Joysticks">
-      <HintPath>..\..\SimTelemetry\Binaries\Triton.Joysticks.dll</HintPath>
+    <Reference Include="Triton, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Triton.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
