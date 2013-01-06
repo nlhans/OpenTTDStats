@@ -40,10 +40,57 @@ namespace OpenTTDStats
         public int SpeedMax;
     }
 
+    public struct TileInfo
+    {
+        public ulong value;
+
+        public TileInfo(ulong v)
+        {
+            value = v;
+        }
+
+        public bool IsWater()
+        {
+            return Height() == 0 && ((value &0xFF0) == 0x160);
+        }
+
+        public uint Height()
+        {
+            return (uint) (value & 0xF);
+        }
+    }
+
+    public class MyMemoryReader : MemoryReader
+    {
+        public ulong ReadUInt64(int address)
+        {
+            byte[] d = ReadBytes(address, 8);
+            return BitConverter.ToUInt64(d, 0);
+        }
+    }
+
     class Program
     {
         private static int MapSizeX;
         private static int MapSizeY;
+
+        private static TileInfo[] Map;
+
+        private static  void GetMap(int w, int h, IntPtr baseaddr, MyMemoryReader read)
+        {
+            Map = new TileInfo[w*h];
+
+            var tilebase = read.ReadInt32(baseaddr + 0xA1BA68);
+
+            for(int x= 0 ; x < w; x++)
+            {
+                for( int y = 0; y < h; y++)
+                {
+                    int d = x*h + y;
+                    Map[d] = new TileInfo(read.ReadUInt64(tilebase + d * 8));
+                }
+            }
+        }
 
         [STAThread]
         static void Main(string[] args)
@@ -86,11 +133,13 @@ namespace OpenTTDStats
                         try
                         {
                             var ver = Int32.Parse(Console.ReadLine());
-                            index = ver;
+                            index = ver-1;
+                            if (ver > p.Length) throw new Exception();
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine("Invalid");
+                            index = -1;
                         }
                     } while (index == -1);
                 }
@@ -107,7 +156,7 @@ namespace OpenTTDStats
                 }
 
                 var pr = p[index];
-                var reader = new MemoryWriter();
+                var reader = new MyMemoryReader();
                 reader.ReadProcess = pr;
                 reader.OpenProcess();
                 var addr_base = pr.MainModule.BaseAddress;
@@ -155,7 +204,6 @@ namespace OpenTTDStats
 
                             if (vehicleListPtr != 0)
                             {
-                                //var veh = reader.ReadInt32((IntPtr) vehicleListPtr);
                                 var tile = reader.ReadInt32(vehicleListPtr + 0x58);
                                 calls++;
                                 if (tile >= tileStats.Length) break;
@@ -194,6 +242,8 @@ namespace OpenTTDStats
                     if (fps> 25)
                         Thread.Sleep((int)Math.Floor(1000.0/25*2 - 1000.0/fps));
                 } while (samples < samples_max);
+
+                GetMap(MapSizeX, MapSizeY, addr_base, reader);
 
                 /*StringBuilder bl = new StringBuilder();
                 for (int i = 0; i < tileStats.Length; i++)
@@ -255,33 +305,46 @@ namespace OpenTTDStats
 
             max_value = samples_max;
 
-            // Average speed: max_value =643
+            // Average speed:
             max_value = 643;
 
-            for (int x = 0; x < MapSizeX; x++)
-            {
-                for (int y = 0; y < MapSizeY; y++)
+            var WaterColor = Color.FromArgb(100, 100, 200);
+            var HeightColors = new Color[16];
+            for (int i = 0; i < 16; i++)
+                HeightColors[i] = Color.FromArgb((16 - i)*3, 100 + i*7, 100);
+
+                for (int x = 0; x < MapSizeX; x++)
                 {
-                    int tile = x*MapSizeY + y;
-                    if (tileStats[tile].TrainsPassed == 0) continue;
+                    for (int y = 0; y < MapSizeY; y++)
+                    {
+                        int tile = x * MapSizeY + y;
+                        var tileinfo = Map[tile];
+                        if (tileinfo.IsWater())
+                        {
+                            b.SetPixel(x, y, WaterColor);
+                            continue;
+                        }
+                        b.SetPixel(x, y, HeightColors[tileinfo.Height()]);
 
-                    //var frac = tileStats[tile] *1.0 / max_value;
-                    var frac = 1 - tileStats[tile].SpeedSum/tileStats[tile].TrainsPassed*1.0/max_value;
-                    if (frac > 1) frac = 1;
-                    if (frac < 0) frac = 0;
-                    ColorRGB c = HSL2RGB(frac, 0.5, 0.5);
+                        if (tileStats[tile].TrainsPassed == 0) continue;
 
-                    b.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+                        //var frac = tileStats[tile] *1.0 / max_value;
+                        var frac = 1 - tileStats[tile].SpeedSum / tileStats[tile].TrainsPassed * 1.0 / max_value;
+                        if (frac > 1) frac = 1;
+                        if (frac < 0) frac = 0;
+                        ColorRGB c = HSL2RGB(frac, 0.5, 0.5);
 
+                        b.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+
+                    }
                 }
-            }
 
             var f = "heatmap.png";
             b.Save(f);
 
             // Legned:
             Bitmap legend = new Bitmap(max_value, 200);
-            for (int i = 0; i < 643; i++)
+            for (int i = 0; i < max_value; i++)
             {
                 for (int y = 0; y < 25; y++)
                 {
