@@ -35,13 +35,13 @@ namespace OpenTTDStats
 
     class Program
     {
-        static int MapSizeX = 256;
-        static int MapSizeY = 1024;
+        private static int MapSizeX;
+        private static int MapSizeY;
 
         [STAThread]
         static void Main(string[] args)
         {
-            int samples_max = 1000;
+            int samples_max ;
             bool sample = true;
             var tileBusiness = new int[0];
 
@@ -88,7 +88,7 @@ namespace OpenTTDStats
                     } while (index == -1);
                 }
 
-                Console.WriteLine("How many samples to take? NOTE: depending on the number of trains and your PC speed; this can vary between 1 to 20fps");
+                Console.WriteLine("How many samples to take? NOTE: depending on the number of trains and your PC speed. Aim is always 25fps");
                 try
                 {
                     samples_max = int.Parse(Console.ReadLine());
@@ -100,7 +100,7 @@ namespace OpenTTDStats
                 }
 
                 var pr = p[index];
-                var reader = new MemoryReader();
+                var reader = new MemoryWriter();
                 reader.ReadProcess = pr;
                 reader.OpenProcess();
                 var addr_base = pr.MainModule.BaseAddress;
@@ -108,7 +108,7 @@ namespace OpenTTDStats
                 MapSizeX = reader.ReadInt32(addr_base + 0x9D5730);
                 MapSizeY = reader.ReadInt32(addr_base + 0x9D5724);
             tileBusiness = new int[MapSizeX * MapSizeY];
-
+                DateTime n = DateTime.Now;
                 int samples = 0;
                 do
                 {
@@ -119,6 +119,15 @@ namespace OpenTTDStats
 
                     // what is 3FF476C8 @ vehicleListPtr?
                     // Ptr size -> 6E30 - 7010
+                    var calls = 0;
+                    var vehicleListCache = new uint[vehicleCount*2+100]; // 50 extra for good measure.
+                    var temp_array = reader.ReadBytes((IntPtr)vehiclePtr, (uint)vehicleListCache.Length * 4);
+                    calls++;
+                    for (int i = 0; i < vehicleCount+50; i++)
+                    {
+                        vehicleListCache[i] = BitConverter.ToUInt32(temp_array, i*8);
+
+                    }
 
                     var objects = 0;
                     var trainCnt = 0;
@@ -126,15 +135,26 @@ namespace OpenTTDStats
                     {
                         try
                         {
-                            var vehicleListPtr = reader.ReadInt32((IntPtr) vehiclePtr + objects*8);
-                            //var veh = reader.ReadInt32((IntPtr) vehicleListPtr);
-                            var tile = reader.ReadInt32((IntPtr) vehicleListPtr + 0x58);
-                            if (tile > tileBusiness.Length) break;
-                            if (tile != 0)
-                                tileBusiness[tile]++;
+                            uint vehicleListPtr = 0;
+                            if (objects < vehicleListCache.Length)
+                                vehicleListPtr = vehicleListCache[objects];
+                            else
+                            {
+                                vehicleListPtr = (uint) reader.ReadInt32((IntPtr) vehiclePtr + objects*8);
+                                calls++;
+                            }
 
                             if (vehicleListPtr != 0)
+                            {
+                                //var veh = reader.ReadInt32((IntPtr) vehicleListPtr);
+                                var tile = reader.ReadInt32((IntPtr) vehicleListPtr + 0x58);
+                                calls++;
+                                if (tile >= tileBusiness.Length) break;
+                                if (tile != 0)
+                                    tileBusiness[tile]++;
+
                                 trainCnt++;
+                            }
                         }catch(Exception ex)
                         {
 
@@ -144,17 +164,19 @@ namespace OpenTTDStats
 
                     }
                     Console.Clear();
-                    Console.WriteLine(samples);
+                    var dt = DateTime.Now.Subtract(n);
+                    var fps = samples / (dt.TotalMilliseconds / 1000.0);
+                    Console.WriteLine(samples + "(" + Math.Round(fps, 2) + "fps / " + Math.Round(calls*fps) + " RPM Int32 / sec");
                     Console.WriteLine(trainCnt + " (" + objects + ") trains ingame");
                     Console.WriteLine(vehicleCount + " trains ingame");
-                    Thread.Sleep(5);
-
+                    if (fps> 25)
+                        Thread.Sleep((int)Math.Floor(1000.0/25*2 - 1000.0/fps));
                 } while (samples < samples_max);
 
-                /*StringBuilder bl = new StringBuilder();
+                StringBuilder bl = new StringBuilder();
                 for (int i = 0; i < tileBusiness.Length; i++)
                     bl.AppendLine(i + "," + tileBusiness[i]);
-                File.WriteAllText("test.csv", bl.ToString());*/
+                File.WriteAllText("test.csv", bl.ToString());
             }
             else
             {
@@ -163,11 +185,18 @@ namespace OpenTTDStats
                 Console.WriteLine("Map Y?");
                 MapSizeY = int.Parse(Console.ReadLine());
 
+                tileBusiness = new int[MapSizeX*MapSizeY];
+                
+
                 var data = File.ReadAllLines("test.csv");
+                samples_max = 0;
                 foreach(var l in data)
                 {
                     var ls = l.Trim().Split(',');
-                    tileBusiness[Int32.Parse(ls[0])] = Int32.Parse(ls[1]);
+                    var v = Int32.Parse(ls[1]);
+                    tileBusiness[Int32.Parse(ls[0])] = v;
+                    if(v < 1000)
+                    samples_max = Math.Max(v, samples_max);
                 }
             }
 
@@ -200,6 +229,8 @@ namespace OpenTTDStats
 
                 }
             }
+
+            max_value = samples_max;
 
             for (int x = 0; x < MapSizeX; x++)
             {
