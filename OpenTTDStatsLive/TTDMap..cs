@@ -68,6 +68,7 @@ namespace OpenTTDStatsLive
                     {
                         foreach (var train in sample.Trains)
                         {
+                            if (_mStats.drawSpeed && train.speed == -1) continue;
                             if (train.tile >= tileStats.Length) continue;
                             try
                             {
@@ -83,8 +84,16 @@ namespace OpenTTDStatsLive
                     }
                 }
 
-                int max_value = 643;
+                int max_value = 0;
 
+                if (!_mStats.drawSpeed)
+                {
+                    max_value = _mStats.Samples.Count/2;
+                }
+                else
+                {
+                    max_value = 643;
+                }
                 var lastDrawX = 0;
                 var lastDrawY = 0;
 
@@ -106,10 +115,17 @@ namespace OpenTTDStatsLive
                             if (drawY >= 0 && drawY < + Height && tileStats[tileIndex].TrainsPassed > 0)
                             {
 
-
+                                var frac = 1.0;
                                 //var frac = tileStats[tile] *1.0 / max_value;
-                                var frac = 1 -
+                                if (_mStats.drawSpeed)
+                                {
+                                    frac = 1 -
                                            tileStats[tileIndex].SpeedSum/tileStats[tileIndex].TrainsPassed*1.0/max_value;
+                                }
+                                else
+                                {
+                                    frac = tileStats[tileIndex].TrainsPassed*1.0/max_value;
+                                }
                                 if (frac > 1) frac = 1;
                                 if (frac < 0) frac = 0;
                                 ColorRgb c = HSL2RGB(frac, 0.5, 0.5);

@@ -37,6 +37,7 @@
             this.lbl_status = new System.Windows.Forms.Label();
             this.split = new System.Windows.Forms.SplitContainer();
             this.cb_Camera = new System.Windows.Forms.CheckBox();
+            this.cb_draw = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.tb_sampleSpeed)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tb_samplePeriod)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.split)).BeginInit();
@@ -55,7 +56,7 @@
             // 
             // buffer
             // 
-            this.buffer.Location = new System.Drawing.Point(770, 13);
+            this.buffer.Location = new System.Drawing.Point(767, 24);
             this.buffer.Name = "buffer";
             this.buffer.Size = new System.Drawing.Size(159, 23);
             this.buffer.TabIndex = 1;
@@ -75,7 +76,7 @@
             // lbl_buffer
             // 
             this.lbl_buffer.AutoSize = true;
-            this.lbl_buffer.Location = new System.Drawing.Point(726, 20);
+            this.lbl_buffer.Location = new System.Drawing.Point(888, 13);
             this.lbl_buffer.Name = "lbl_buffer";
             this.lbl_buffer.Size = new System.Drawing.Size(38, 13);
             this.lbl_buffer.TabIndex = 3;
@@ -105,7 +106,7 @@
             // lbl_status
             // 
             this.lbl_status.AutoSize = true;
-            this.lbl_status.Location = new System.Drawing.Point(590, 29);
+            this.lbl_status.Location = new System.Drawing.Point(764, 9);
             this.lbl_status.Name = "lbl_status";
             this.lbl_status.Size = new System.Drawing.Size(35, 13);
             this.lbl_status.TabIndex = 6;
@@ -122,6 +123,7 @@
             // 
             // split.Panel1
             // 
+            this.split.Panel1.Controls.Add(this.cb_draw);
             this.split.Panel1.Controls.Add(this.cb_Camera);
             this.split.Panel1.Controls.Add(this.lbl_SampleSpeed);
             this.split.Panel1.Controls.Add(this.lbl_status);
@@ -144,6 +146,19 @@
             this.cb_Camera.Text = "Sync Camera";
             this.cb_Camera.UseVisualStyleBackColor = true;
             this.cb_Camera.CheckedChanged += new System.EventHandler(this.cb_Camera_CheckedChanged);
+            // 
+            // cb_draw
+            // 
+            this.cb_draw.AutoSize = true;
+            this.cb_draw.Checked = true;
+            this.cb_draw.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.cb_draw.Location = new System.Drawing.Point(593, 30);
+            this.cb_draw.Name = "cb_draw";
+            this.cb_draw.Size = new System.Drawing.Size(85, 17);
+            this.cb_draw.TabIndex = 8;
+            this.cb_draw.Text = "Show speed";
+            this.cb_draw.UseVisualStyleBackColor = true;
+            this.cb_draw.CheckedChanged += new System.EventHandler(this.cb_draw_CheckedChanged);
             // 
             // TTDStats
             // 
@@ -174,6 +189,7 @@
         private System.Windows.Forms.Label lbl_status;
         private System.Windows.Forms.SplitContainer split;
         private System.Windows.Forms.CheckBox cb_Camera;
+        private System.Windows.Forms.CheckBox cb_draw;
     }
 }
 

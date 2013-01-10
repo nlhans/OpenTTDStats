@@ -33,6 +33,7 @@ namespace OpenTTDStatsLive
         public int TileCameraY = 0;
         public int TileCameraW = 0;
         public int TileCameraH = 0;
+        public bool drawSpeed;
 
 
         public TTDStats()
@@ -49,6 +50,7 @@ namespace OpenTTDStatsLive
             tb_sampleSpeed.Value = 25;
             tb_samplePeriod.Value = 30;
 
+            cb_draw.Checked = true;
 
             split.SplitterDistance = 50;
 
@@ -266,6 +268,11 @@ namespace OpenTTDStatsLive
         private void cb_Camera_CheckedChanged(object sender, EventArgs e)
         {
             syncCamera = cb_Camera.Checked;
+        }
+
+        private void cb_draw_CheckedChanged(object sender, EventArgs e)
+        {
+            drawSpeed = cb_draw.Checked;
         }
     }
 }

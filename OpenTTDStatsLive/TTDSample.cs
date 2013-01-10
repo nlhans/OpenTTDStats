@@ -49,6 +49,11 @@ namespace OpenTTDStatsLive
                                 TrainStat stat = new TrainStat(tile, spd);
                                 Trains.Add(stat);
                             }
+                            else 
+                            {
+                                TrainStat stat = new TrainStat(tile, -1);
+                                Trains.Add(stat);
+                            }
                         }
 
                         trainCnt++;
