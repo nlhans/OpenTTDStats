@@ -55,7 +55,7 @@
             // 
             // buffer
             // 
-            this.buffer.Location = new System.Drawing.Point(990, 10);
+            this.buffer.Location = new System.Drawing.Point(770, 13);
             this.buffer.Name = "buffer";
             this.buffer.Size = new System.Drawing.Size(159, 23);
             this.buffer.TabIndex = 1;
@@ -75,7 +75,7 @@
             // lbl_buffer
             // 
             this.lbl_buffer.AutoSize = true;
-            this.lbl_buffer.Location = new System.Drawing.Point(949, 20);
+            this.lbl_buffer.Location = new System.Drawing.Point(726, 20);
             this.lbl_buffer.Name = "lbl_buffer";
             this.lbl_buffer.Size = new System.Drawing.Size(38, 13);
             this.lbl_buffer.TabIndex = 3;
@@ -96,7 +96,7 @@
             this.tb_samplePeriod.Maximum = 360;
             this.tb_samplePeriod.Minimum = 15;
             this.tb_samplePeriod.Name = "tb_samplePeriod";
-            this.tb_samplePeriod.Size = new System.Drawing.Size(287, 32);
+            this.tb_samplePeriod.Size = new System.Drawing.Size(159, 32);
             this.tb_samplePeriod.TabIndex = 5;
             this.tb_samplePeriod.TickFrequency = 15;
             this.tb_samplePeriod.Value = 15;
@@ -105,7 +105,7 @@
             // lbl_status
             // 
             this.lbl_status.AutoSize = true;
-            this.lbl_status.Location = new System.Drawing.Point(718, 20);
+            this.lbl_status.Location = new System.Drawing.Point(590, 29);
             this.lbl_status.Name = "lbl_status";
             this.lbl_status.Size = new System.Drawing.Size(35, 13);
             this.lbl_status.TabIndex = 6;
@@ -130,14 +130,14 @@
             this.split.Panel1.Controls.Add(this.tb_sampleSpeed);
             this.split.Panel1.Controls.Add(this.lbl_average);
             this.split.Panel1.Controls.Add(this.lbl_buffer);
-            this.split.Size = new System.Drawing.Size(1161, 691);
+            this.split.Size = new System.Drawing.Size(938, 691);
             this.split.SplitterIncrement = 50;
             this.split.TabIndex = 7;
             // 
             // cb_Camera
             // 
             this.cb_Camera.AutoSize = true;
-            this.cb_Camera.Location = new System.Drawing.Point(863, 19);
+            this.cb_Camera.Location = new System.Drawing.Point(593, 9);
             this.cb_Camera.Name = "cb_Camera";
             this.cb_Camera.Size = new System.Drawing.Size(89, 17);
             this.cb_Camera.TabIndex = 7;
@@ -149,7 +149,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1161, 691);
+            this.ClientSize = new System.Drawing.Size(938, 691);
             this.Controls.Add(this.split);
             this.Name = "TTDStats";
             this.Text = "TTD Stats";
