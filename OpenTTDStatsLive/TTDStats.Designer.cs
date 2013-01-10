@@ -36,6 +36,7 @@
             this.tb_samplePeriod = new System.Windows.Forms.TrackBar();
             this.lbl_status = new System.Windows.Forms.Label();
             this.split = new System.Windows.Forms.SplitContainer();
+            this.cb_Camera = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.tb_sampleSpeed)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tb_samplePeriod)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.split)).BeginInit();
@@ -121,6 +122,7 @@
             // 
             // split.Panel1
             // 
+            this.split.Panel1.Controls.Add(this.cb_Camera);
             this.split.Panel1.Controls.Add(this.lbl_SampleSpeed);
             this.split.Panel1.Controls.Add(this.lbl_status);
             this.split.Panel1.Controls.Add(this.buffer);
@@ -131,6 +133,17 @@
             this.split.Size = new System.Drawing.Size(1161, 691);
             this.split.SplitterIncrement = 50;
             this.split.TabIndex = 7;
+            // 
+            // cb_Camera
+            // 
+            this.cb_Camera.AutoSize = true;
+            this.cb_Camera.Location = new System.Drawing.Point(863, 19);
+            this.cb_Camera.Name = "cb_Camera";
+            this.cb_Camera.Size = new System.Drawing.Size(89, 17);
+            this.cb_Camera.TabIndex = 7;
+            this.cb_Camera.Text = "Sync Camera";
+            this.cb_Camera.UseVisualStyleBackColor = true;
+            this.cb_Camera.CheckedChanged += new System.EventHandler(this.cb_Camera_CheckedChanged);
             // 
             // TTDStats
             // 
@@ -160,6 +173,7 @@
         private System.Windows.Forms.TrackBar tb_samplePeriod;
         private System.Windows.Forms.Label lbl_status;
         private System.Windows.Forms.SplitContainer split;
+        private System.Windows.Forms.CheckBox cb_Camera;
     }
 }
 

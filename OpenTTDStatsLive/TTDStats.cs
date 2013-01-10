@@ -27,7 +27,13 @@ namespace OpenTTDStatsLive
         private int SamplePeriod = 30;
 
         public readonly List<TTDSample> Samples = new List<TTDSample>();
-            
+        public bool syncCamera = false;
+
+        public int TileCameraX = 0;
+        public int TileCameraY = 0;
+        public int TileCameraW = 0;
+        public int TileCameraH = 0;
+
 
         public TTDStats()
         {
@@ -86,6 +92,26 @@ namespace OpenTTDStatsLive
                 {
                     var x = _mTTD.ReadInt32(new IntPtr(addr_base + 0x9D5730));
                     var y = _mTTD.ReadInt32(new IntPtr(addr_base + 0x9D5724));
+
+                    var camera_basePtr1 = _mTTD.ReadInt32(new IntPtr(addr_base + 0xA1BB58));
+                    var camera_base = _mTTD.ReadInt32(new IntPtr(camera_basePtr1 + 0x48));
+
+                    TileCameraW = _mTTD.ReadInt32(new IntPtr(camera_base + 0x18)) /4/ 32;
+                    TileCameraH = _mTTD.ReadInt32(new IntPtr(camera_base + 0x1C)) /4/ 32*2;
+
+                    TileCameraY = _mTTD.ReadInt32(new IntPtr(camera_base + 0x14))/128;
+                    TileCameraX = TileCameraY;
+
+                    var temp_offset = _mTTD.ReadInt32(new IntPtr(camera_base + 0x10)) / 128;
+                    TileCameraX += temp_offset / 2;
+                    TileCameraY -= temp_offset / 2;
+
+                    TileCameraY -= TileCameraH / 2;
+
+                    if (TileCameraX < 0) TileCameraX = 0;
+                    if (TileCameraY < 0) TileCameraY = 0;
+                    if (TileCameraX+TileCameraW  > x) TileCameraX = x-TileCameraW;
+                    if (TileCameraY+TileCameraH >y) TileCameraY = y-TileCameraH;
 
                     if (x != MapSizeX || y != MapSizeY)
                     {
@@ -235,6 +261,11 @@ namespace OpenTTDStatsLive
                 _mTTD = null;
             }
             this.Invoke(new EventHandler(UpdateStatus), new object[2] { sender, e});
+        }
+
+        private void cb_Camera_CheckedChanged(object sender, EventArgs e)
+        {
+            syncCamera = cb_Camera.Checked;
         }
     }
 }

@@ -45,8 +45,12 @@ namespace OpenTTDStatsLive
             else
                 lock (_mStats.bMap)
                 {
-                    g.DrawImage(_mStats.bMap, rect);
+                    if (_mStats.syncCamera)
+                        g.DrawImage(_mStats.bMap, rect, _mStats.TileCameraX, _mStats.TileCameraY, _mStats.TileCameraW, _mStats.TileCameraH, GraphicsUnit.Pixel);
+                    else
+                        g.DrawImage(_mStats.bMap, rect);
                 }
+
 
             try
             {
@@ -87,13 +91,17 @@ namespace OpenTTDStatsLive
                 for (var x = 0; x < _mStats.MapSizeX; x++)
                 {
                     var drawX = x * Width/_mStats.MapSizeX;
+                    if (_mStats.syncCamera)
+                        drawX = (x - _mStats.TileCameraX) * Width / _mStats.TileCameraW;
                     if (drawX >= 0 && drawX <= rect.Width)
                     {
                         for (var y = 0; y < _mStats.MapSizeY; y++)
                         {
                             var tileIndex = x*_mStats.MapSizeY + y;
 
-                            var drawY = y * Height/_mStats.MapSizeY;
+                            var drawY = y * Height / _mStats.MapSizeY;
+                            if (_mStats.syncCamera)
+                                drawY = (y - _mStats.TileCameraY) * Height / _mStats.TileCameraH;
 
                             if (drawY >= 0 && drawY < + Height && tileStats[tileIndex].TrainsPassed > 0)
                             {
