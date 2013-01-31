@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
-using Triton.Memory;
+using SimTelemetry.Domain.Memory;
 
 namespace OpenTTDStatsLive
 {
@@ -13,7 +14,7 @@ namespace OpenTTDStatsLive
         private Thread _mSampleThread;
         private Thread _mTTDThread;
 
-        private MyMemoryReader _mTTD;
+        private MemoryProvider _mTTD;
         private TTDMap mapControl;
 
         public int MapSizeX;
@@ -70,71 +71,76 @@ namespace OpenTTDStatsLive
             lbl_average.Text = "Averaging Period: " + tb_samplePeriod.Value + " seconds";
             SamplePeriod = tb_samplePeriod.Value;
         }
+
+        private void RefreshCameraPool()
+        {
+            MemoryPool CameraPool;
+            if (_mTTD.Contains("Camera"))
+            {
+                Dictionary<string, IMemoryObject> fields = _mTTD.Get("Camera").Fields;
+                _mTTD.Remove(_mTTD.Get("Camera"));
+                CameraPool = new MemoryPool("Camera", MemoryAddress.StaticAbsolute, _mTTD.Get("Map").ReadAs<int>("CameraBasePtr"), 0x100);
+
+                foreach (var obj in fields)
+                    CameraPool.Add(obj.Value);
+            }
+            else
+            {
+                CameraPool = new MemoryPool("Camera", MemoryAddress.StaticAbsolute, _mTTD.Get("Map").ReadAs<int>("CameraBasePtr"), 0x100);
+                if (CameraPool.Address < 0x100000)
+                    return;
+
+                CameraPool.Add(new MemoryFieldSignature<int>("CameraY", MemoryAddress.Dynamic,  "8B78148958XX8948??85XX74", new int[0], 4));
+
+                CameraPool.Add(new MemoryFieldSignature<int>("CameraW", MemoryAddress.Dynamic, "89XXXX8BXXXX3B46??0F", new int[0], 4));
+                CameraPool.Add(new MemoryFieldSignature<int>("CameraH", MemoryAddress.Dynamic, "33DB3B5E??XXXX8B", new int[0], 4));
+
+                CameraPool.Add(new MemoryFieldSignature<int>("CameraOffset", MemoryAddress.Dynamic, "8BXXXX8BXX8B46??2945XX", new int[0], 4));
+            }
+            _mTTD.Add(CameraPool);
+
+        }
+
+        private ManualResetEvent _mInitWait = new ManualResetEvent(false);
+
         public void TTDSeek()
         {
-            var timer_count = 0;
             while(_mTTDThread.IsAlive)
             {
                 if (_mTTD == null)
                 {
                     var prs = Process.GetProcessesByName("openttd");
-                    if (prs.Length == 1)
+                    if (prs.Length >= 1)
                     {
-                        _mTTD = new MyMemoryReader { ReadProcess = prs[0] };
-                        lock (_mTTD)
-                        {
-                            _mTTD.OpenProcess();
-                            _mTTD.ReadProcess.Exited += new System.EventHandler(ReadProcess_Exited);
+                        var reader = new MemoryReader();
+                        reader.Open(prs[0]);
+                        reader.Process.Exited += ReadProcess_Exited;
+                        _mTTD = new MemoryProvider(reader);
 
-                            addr_base = (long)prs[0].MainModule.BaseAddress;
-                        }
-                    }
-                }
-                else
-                {
-                    var x = _mTTD.ReadInt32(new IntPtr(addr_base + 0x9D5730));
-                    var y = _mTTD.ReadInt32(new IntPtr(addr_base + 0x9D5724));
 
-                    var camera_basePtr1 = _mTTD.ReadInt32(new IntPtr(addr_base + 0xA1BB58));
-                    var camera_base = _mTTD.ReadInt32(new IntPtr(camera_basePtr1 + 0x48));
+                        addr_base = (long)prs[0].MainModule.BaseAddress;
 
-                    TileCameraW = _mTTD.ReadInt32(new IntPtr(camera_base + 0x18)) /4/ 32;
-                    TileCameraH = _mTTD.ReadInt32(new IntPtr(camera_base + 0x1C)) /4/ 32*2;
+                        _mTTD.Scanner.Enable();
 
-                    TileCameraY = _mTTD.ReadInt32(new IntPtr(camera_base + 0x14))/128;
-                    TileCameraX = TileCameraY;
+                        // Initialize memorypool
+                        MemoryPool MapData = new MemoryPool("Map", MemoryAddress.Static, 0, 0, 0);
+                        //MapData.Add(new MemoryFieldSignature<int>("MapX", MemoryAddress.StaticAbsolute, "FFXXXXFF35XXXXXXXXFF35????????E8XXXXXXXX", new int[0], 4));
+                        //MapData.Add(new MemoryFieldSignature<int>("MapY", MemoryAddress.StaticAbsolute, "FFXXXXFF35????????FF35XXXXXXXXE8XXXXXXXX", new int[0], 4));
+                        MapData.Add(new MemoryFieldSignature<int>("MapY", MemoryAddress.StaticAbsolute, "A1????????8D50FF23D6D3EE", new int[0], 4));
+                        MapData.Add(new MemoryFieldSignature<int>("MapX", MemoryAddress.StaticAbsolute, "8B0D????????2BC2", new int[0], 4));
 
-                    var temp_offset = _mTTD.ReadInt32(new IntPtr(camera_base + 0x10)) / 128;
-                    TileCameraX += temp_offset / 2;
-                    TileCameraY -= temp_offset / 2;
+                        MapData.Add(new MemoryFieldSignature<int>("CameraBase", MemoryAddress.StaticAbsolute, "8BXXXXXXXXXX89XX????????85F674XX", new int[0], 4));
+                        MapData.Add(new MemoryFieldFunc<int>("CameraBasePtr", (pool) => _mTTD.Reader.ReadInt32(MapData.ReadAs<int>("CameraBase") + 0x3C)));
 
-                    TileCameraY -= TileCameraH / 2;
+                        MapData.Add(new MemoryFieldSignature<int>("TileBase", MemoryAddress.StaticAbsolute, "A1????????8AXXXX24XX3CXX", new int[0], 4));
+                        MapData.Add(new MemoryFieldSignature<int>("VehicleBase", MemoryAddress.StaticAbsolute, "73XXA1????????8BXXXX3BXX0F84", new int[0], 4));
+                        MapData.Add(new MemoryFieldSignature<int>("VehicleCount", MemoryAddress.StaticAbsolute, "85C075E5FF74240CE8XXXXXXXXCC8B15XXXXXXXX8B0DXXXXXXXX53568B35????????57EB0B833CB100", new int[0], 4));
 
-                    if (TileCameraX < 0) TileCameraX = 0;
-                    if (TileCameraY < 0) TileCameraY = 0;
-                    if (TileCameraX+TileCameraW  > x) TileCameraX = x-TileCameraW;
-                    if (TileCameraY+TileCameraH >y) TileCameraY = y-TileCameraH;
-
-                    if (x != MapSizeX || y != MapSizeY)
-                    {
-                        MapSizeX = x;
-                        MapSizeY = y;
-
-                        // Update background
-                        RenderMap();
-                        timer_count = 0;
-
-                        lock (Samples)
-                        {
-                            Samples.Clear();
-                        }
-                    }
-
-                    timer_count++;
-                    if(timer_count >= 600) // 10 seconds
-                    {
-                        timer_count = 0;
-                        RenderMap();
+                        _mTTD.Add(MapData);
+                        _mTTD.Refresh();
+                        RefreshCameraPool();
+                        Debug.WriteLine(MapData.Fields["MapX"].Address);
+                        _mInitWait.Set();
                     }
                 }
                 Thread.Sleep(100);
@@ -143,19 +149,20 @@ namespace OpenTTDStatsLive
 
         private void RenderMap()
         {
+            if (MapSizeX <= 0 || MapSizeY <= 0) return;
             bMap = new Bitmap(MapSizeX, MapSizeY);
 
 
             // Capture tile array
             var Map = new TileInfo[MapSizeX*MapSizeY];
-            var tilebase = _mTTD.ReadInt32(new IntPtr(addr_base + 0xA1BA68));
+            var tilebase = _mTTD.Get("Map").ReadAs<int>("TileBase"); // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BA68));
 
             for (int x = 0; x < MapSizeX; x++)
             {
                 for (int y = 0; y < MapSizeY; y++)
                 {
                     int d = x*MapSizeY + y;
-                    Map[d] = new TileInfo(_mTTD.ReadUInt64(tilebase + d*8));
+                    Map[d] = new TileInfo(_mTTD.Reader.ReadUInt64(tilebase + d*8));
                 }
             }
 
@@ -193,10 +200,19 @@ namespace OpenTTDStatsLive
         private void Sampler()
         {
             var count = 0;
+            var timer_count = 0;
 
-            while(_mSampleThread.IsAlive)
+            _mInitWait.WaitOne();
+
+            while (_mSampleThread.IsAlive)
             {
-                var periodTime =1000.0/SampleSpeed;
+                if (_mTTD == null)
+                {
+                    Thread.Sleep(100);
+                    continue;
+                }
+                _mTTD.Refresh();
+                var periodTime = 1000.0/SampleSpeed;
 
                 DateTime n = DateTime.Now;
 
@@ -204,6 +220,63 @@ namespace OpenTTDStatsLive
 
                 if (_mTTD != null)
                 {
+
+                    var MapData = _mTTD.Get("Map");
+                    var x = MapData.ReadAs<int>("MapX");
+                    // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0x9D5730));
+                    var y = MapData.ReadAs<int>("MapY");
+                    // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0x9D5724));
+
+                    if (_mTTD.Contains("Camera"))
+                    {
+                        //var camera_basePtr1 = _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BB58));
+                        //var camera_base = _mTTD.Reader.ReadInt32(new IntPtr(camera_basePtr1 + 0x48));
+
+                        var CameraData = _mTTD.Get("Camera");
+                        TileCameraW = CameraData.ReadAs<int>("CameraW");
+                        // _mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x18)) / 4 / 32;
+                        TileCameraH = CameraData.ReadAs<int>("CameraH");
+                        // _mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x1C))/4/32*2;
+
+                        TileCameraY = CameraData.ReadAs<int>("CameraY");
+                        //_mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x14))/128;
+                        TileCameraX = TileCameraY;
+
+                        var temp_offset = CameraData.ReadAs<int>("CameraOffset");
+                        //_mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x10))/128;
+                        TileCameraX += temp_offset/2;
+                        TileCameraY -= temp_offset/2;
+
+                        TileCameraY -= TileCameraH/2;
+
+                        if (TileCameraX < 0) TileCameraX = 0;
+                        if (TileCameraY < 0) TileCameraY = 0;
+                        if (TileCameraX + TileCameraW > x) TileCameraX = x - TileCameraW;
+                        if (TileCameraY + TileCameraH > y) TileCameraY = y - TileCameraH;
+                    }
+                    if (x != MapSizeX || y != MapSizeY)
+                    {
+                        MapSizeX = x;
+                        MapSizeY = y;
+
+                        // Update background
+                        RenderMap();
+                        timer_count = 0;
+
+                        lock (Samples)
+                        {
+                            Samples.Clear();
+                        }
+                    }
+
+                    timer_count++;
+                    if (timer_count >= 30) // 10 seconds
+                    {
+                        timer_count = 0;
+                        RenderMap();
+                    }
+
+
                     TTDSample sample = new TTDSample(_mTTD, addr_base);
                     //
 
@@ -221,7 +294,7 @@ namespace OpenTTDStatsLive
                     count = 0;
                     try
                     {
-                        this.Invoke(new EventHandler(UpdateStatus), new object[2] { null, null });
+                        this.Invoke(new EventHandler(UpdateStatus), new object[2] {null, null});
                         mapControl.Invalidate();
                     }
                     catch (Exception ex)
@@ -231,7 +304,7 @@ namespace OpenTTDStatsLive
                 }
                 var dt = DateTime.Now.Subtract(n);
 
-                Thread.Sleep(Math.Max(1,Convert.ToInt32(periodTime-dt.TotalMilliseconds)));
+                Thread.Sleep(Math.Max(1, Convert.ToInt32(periodTime - dt.TotalMilliseconds)));
             }
         }
 
@@ -259,7 +332,7 @@ namespace OpenTTDStatsLive
         {
             lock (_mTTD)
             {
-                _mTTD.CloseHandle();
+                _mTTD.Reader.Close();
                 _mTTD = null;
             }
             this.Invoke(new EventHandler(UpdateStatus), new object[2] { sender, e});

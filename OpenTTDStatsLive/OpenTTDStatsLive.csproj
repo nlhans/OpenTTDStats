@@ -15,7 +15,7 @@
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -44,13 +44,24 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="Triton">
-      <HintPath>..\Triton.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColorRgb.cs" />
-    <Compile Include="MyMemoryReader.cs" />
+    <Compile Include="Memory\IMemoryObject.cs" />
+    <Compile Include="Memory\MemoryAddress.cs" />
+    <Compile Include="Memory\MemoryDataConverter.cs" />
+    <Compile Include="Memory\MemoryDataConverterProvider.cs" />
+    <Compile Include="Memory\MemoryField.cs" />
+    <Compile Include="Memory\MemoryFieldConstant.cs" />
+    <Compile Include="Memory\MemoryFieldFunc.cs" />
+    <Compile Include="Memory\MemoryFieldLazy.cs" />
+    <Compile Include="Memory\MemoryFieldSignature.cs" />
+    <Compile Include="Memory\MemoryFieldSignaturePointer.cs" />
+    <Compile Include="Memory\MemoryPool.cs" />
+    <Compile Include="Memory\MemoryProvider.cs" />
+    <Compile Include="Memory\MemoryReader.cs" />
+    <Compile Include="Memory\MemoryReaderApi.cs" />
+    <Compile Include="Memory\MemorySignatureScanner.cs" />
     <Compile Include="TileInfo.cs" />
     <Compile Include="TileStats.cs" />
     <Compile Include="TrainStat.cs" />
