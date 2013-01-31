@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using SimTelemetry.Domain.Memory;
+using Triton.Maths;
 
 namespace OpenTTDStatsLive
 {
@@ -129,7 +130,8 @@ namespace OpenTTDStatsLive
                         MapData.Add(new MemoryFieldSignature<int>("MapY", MemoryAddress.StaticAbsolute, "A1????????8D50FF23D6D3EE", new int[0], 4));
                         MapData.Add(new MemoryFieldSignature<int>("MapX", MemoryAddress.StaticAbsolute, "8B0D????????2BC2", new int[0], 4));
 
-                        MapData.Add(new MemoryFieldSignature<int>("CameraBase", MemoryAddress.StaticAbsolute, "8BXXXXXXXXXX89XX????????85F674XX", new int[0], 4));
+                        //MapData.Add(new MemoryFieldSignature<int>("CameraBase", MemoryAddress.StaticAbsolute, "8BXXXXXXXXXX89XX????????85F674XX", new int[0], 4));
+                        MapData.Add(new MemoryFieldSignature<int>("CameraBase", MemoryAddress.StaticAbsolute, "E8XXXXXXXX8B0D????????8BF085C9", new int[0], 4));
                         MapData.Add(new MemoryFieldFunc<int>("CameraBasePtr", (pool) => _mTTD.Reader.ReadInt32(MapData.ReadAs<int>("CameraBase") + 0x3C)));
 
                         MapData.Add(new MemoryFieldSignature<int>("TileBase", MemoryAddress.StaticAbsolute, "A1????????8AXXXX24XX3CXX", new int[0], 4));
@@ -197,6 +199,8 @@ namespace OpenTTDStatsLive
 
         }
 
+        private Filter AvgFps = new Filter(100);
+
         private void Sampler()
         {
             var count = 0;
@@ -223,27 +227,17 @@ namespace OpenTTDStatsLive
 
                     var MapData = _mTTD.Get("Map");
                     var x = MapData.ReadAs<int>("MapX");
-                    // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0x9D5730));
                     var y = MapData.ReadAs<int>("MapY");
-                    // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0x9D5724));
 
                     if (_mTTD.Contains("Camera"))
                     {
-                        //var camera_basePtr1 = _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BB58));
-                        //var camera_base = _mTTD.Reader.ReadInt32(new IntPtr(camera_basePtr1 + 0x48));
-
                         var CameraData = _mTTD.Get("Camera");
-                        TileCameraW = CameraData.ReadAs<int>("CameraW");
-                        // _mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x18)) / 4 / 32;
-                        TileCameraH = CameraData.ReadAs<int>("CameraH");
-                        // _mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x1C))/4/32*2;
-
-                        TileCameraY = CameraData.ReadAs<int>("CameraY");
-                        //_mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x14))/128;
+                        TileCameraW = CameraData.ReadAs<int>("CameraW")/4/32;
+                        TileCameraH = CameraData.ReadAs<int>("CameraH")/4/32*2;
+                        TileCameraY = CameraData.ReadAs<int>("CameraY")/128;
                         TileCameraX = TileCameraY;
 
-                        var temp_offset = CameraData.ReadAs<int>("CameraOffset");
-                        //_mTTD.Reader.ReadInt32(new IntPtr(camera_base + 0x10))/128;
+                        var temp_offset = CameraData.ReadAs<int>("CameraOffset")/128;
                         TileCameraX += temp_offset/2;
                         TileCameraY -= temp_offset/2;
 
@@ -254,6 +248,8 @@ namespace OpenTTDStatsLive
                         if (TileCameraX + TileCameraW > x) TileCameraX = x - TileCameraW;
                         if (TileCameraY + TileCameraH > y) TileCameraY = y - TileCameraH;
                     }
+                    else
+                        RefreshCameraPool();
                     if (x != MapSizeX || y != MapSizeY)
                     {
                         MapSizeX = x;
@@ -270,14 +266,13 @@ namespace OpenTTDStatsLive
                     }
 
                     timer_count++;
-                    if (timer_count >= 30) // 10 seconds
+                    if (timer_count >= 600) // 10 seconds
                     {
                         timer_count = 0;
                         RenderMap();
                     }
 
-
-                    TTDSample sample = new TTDSample(_mTTD, addr_base);
+                    var sample = new TTDSample(_mTTD, addr_base);
                     //
 
                     lock (Samples)
@@ -303,8 +298,8 @@ namespace OpenTTDStatsLive
                     }
                 }
                 var dt = DateTime.Now.Subtract(n);
-
                 Thread.Sleep(Math.Max(1, Convert.ToInt32(periodTime - dt.TotalMilliseconds)));
+                AvgFps.Add(DateTime.Now.Subtract(n).TotalMilliseconds);
             }
         }
 
@@ -324,7 +319,7 @@ namespace OpenTTDStatsLive
 
                 buffer.Value = bufferIndex;
 
-                lbl_status.Text = "Found TTD; " + trains + " trains";
+                lbl_status.Text = "Found TTD; " + trains + " trains; " + Math.Round(1000.0/AvgFps.Average,2)+"Hz";
             }
         }
 
