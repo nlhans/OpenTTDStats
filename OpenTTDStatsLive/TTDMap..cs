@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Data;
 using System.Drawing.Drawing2D;
@@ -62,24 +63,24 @@ namespace OpenTTDStatsLive
                     tileStats[index].SpeedMax = 0;
                 }
 
-                lock (_mStats.Samples)
+                var mySamples = _mStats.GetSamplesCopy();
+                foreach (var sample in mySamples)
                 {
-                    foreach (var sample in _mStats.Samples)
+                    foreach (var train in sample.Trains)
                     {
-                        foreach (var train in sample.Trains)
+                        if (_mStats.drawSpeed && train.speed == -1) continue;
+                        if (train.tile-1 >= tileStats.Length) continue;
+                        if (train.tile < 0) continue;
+                        try
                         {
-                            if (_mStats.drawSpeed && train.speed == -1) continue;
-                            if (train.tile >= tileStats.Length) continue;
-                            try
-                            {
-                                tileStats[train.tile].TrainsPassed++;
-                                tileStats[train.tile].SpeedSum += train.speed;
-                                tileStats[train.tile].SpeedMin = Math.Min(tileStats[train.tile].SpeedMin, train.speed);
-                                tileStats[train.tile].SpeedMax = Math.Max(tileStats[train.tile].SpeedMax, train.speed);
-                            }catch(Exception ex)
-                            {
-                                
-                            }
+                            tileStats[train.tile].TrainsPassed++;
+                            tileStats[train.tile].SpeedSum += train.speed;
+                            tileStats[train.tile].SpeedMin = Math.Min(tileStats[train.tile].SpeedMin, train.speed);
+                            tileStats[train.tile].SpeedMax = Math.Max(tileStats[train.tile].SpeedMax, train.speed);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine(train.tile + " / " + tileStats.Length);
                         }
                     }
                 }
@@ -88,7 +89,7 @@ namespace OpenTTDStatsLive
 
                 if (!_mStats.drawSpeed)
                 {
-                    max_value = _mStats.Samples.Count/2;
+                    max_value = mySamples.Count/2;
                 }
                 else
                 {

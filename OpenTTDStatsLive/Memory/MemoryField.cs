@@ -40,8 +40,7 @@ namespace SimTelemetry.Domain.Memory
                 RefreshStatic();
             else
                 RefreshDynamic();
-            if(Name=="CameraBase")
-                Console.WriteLine("{0:X}", MemoryDataConverter.Cast<T, int>(Value));
+
             if (Value != null && Conversion != null)
                 _Value = Conversion(_Value);
         }

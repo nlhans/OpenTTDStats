@@ -70,7 +70,7 @@ namespace SimTelemetry.Domain.Memory
                     throw new Exception("AddressType for '" + Name + "' is not valid");
                     break;
             }
-            Debug.WriteLine(Name + "="+Address+":"+Offset);
+            //Debug.WriteLine(Name + "="+Address+":"+Offset);
             Initialized = true;
         }
 

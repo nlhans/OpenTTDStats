@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using SimTelemetry.Domain.Memory;
+using Triton;
 using Triton.Maths;
 
 namespace OpenTTDStatsLive
@@ -28,7 +29,12 @@ namespace OpenTTDStatsLive
         private int SampleSpeed = 25;
         private int SamplePeriod = 30;
 
-        public readonly List<TTDSample> Samples = new List<TTDSample>();
+        protected readonly List<TTDSample> Samples = new List<TTDSample>();
+        public List<TTDSample> GetSamplesCopy()
+        {
+            List<TTDSample> samples2 = new List<TTDSample>(Samples);
+            return samples2;
+        }
         public bool syncCamera = false;
 
         public int TileCameraX = 0;
@@ -52,7 +58,7 @@ namespace OpenTTDStatsLive
             tb_sampleSpeed.Value = 25;
             tb_samplePeriod.Value = 30;
 
-            cb_draw.Checked = true;
+            //cb_draw.Checked = true;
 
             split.SplitterDistance = 50;
 
@@ -141,13 +147,14 @@ namespace OpenTTDStatsLive
                         _mTTD.Add(MapData);
                         _mTTD.Refresh();
                         RefreshCameraPool();
-                        Debug.WriteLine(MapData.Fields["MapX"].Address);
                         _mInitWait.Set();
                     }
                 }
                 Thread.Sleep(100);
             }
         }
+
+        private byte[] rawTileData;
 
         private void RenderMap()
         {
@@ -157,50 +164,51 @@ namespace OpenTTDStatsLive
 
             // Capture tile array
             var Map = new TileInfo[MapSizeX*MapSizeY];
-            var tilebase = _mTTD.Get("Map").ReadAs<int>("TileBase"); // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BA68));
 
             for (int x = 0; x < MapSizeX; x++)
             {
                 for (int y = 0; y < MapSizeY; y++)
                 {
                     int d = x*MapSizeY + y;
-                    Map[d] = new TileInfo(_mTTD.Reader.ReadUInt64(tilebase + d*8));
+                    //Map[d] = new TileInfo(_mTTD.Reader.ReadUInt64(tilebase + d*8));
+                    Map[d] = new TileInfo(MemoryDataConverter.Read<ulong>(rawTileData, d*8));
                 }
             }
+            rawTileData = new byte[0];
 
             // Render onto bitmap
             // TODO: Take camera into account?
             var waterColor = Color.FromArgb(100, 100, 200);
             var heightColors = new Color[16];
             for (int i = 0; i < 16; i++)
-                heightColors[i] = Color.FromArgb((16 - i)*3, 100 + i*7, 100);
+                heightColors[i] = Color.FromArgb((16 - i)*3, 100 + i*9, 50);
 
             lock(bMap)
             {
-            for (var x = 0; x < MapSizeX; x++)
-            {
-                for (var y = 0; y < MapSizeY; y++)
+                for (var x = 0; x < MapSizeX; x++)
                 {
-                    int tile = x*MapSizeY + y;
-                    var tileinfo = Map[tile];
-                    if (tileinfo.IsWater)
+                    for (var y = 0; y < MapSizeY; y++)
                     {
-                        bMap.SetPixel(x, y, waterColor);
-                    }
-                    else
-                    {
-                        bMap.SetPixel(x, y, heightColors[tileinfo.Height]);
-                    }
+                        int tile = x*MapSizeY + y;
+                        var tileinfo = Map[tile];
+                        if (tileinfo.IsWater)
+                        {
+                            bMap.SetPixel(x, y, waterColor);
+                        }
+                        else
+                        {
+                            bMap.SetPixel(x, y, heightColors[tileinfo.Height]);
+                        }
 
+                    }
                 }
-            }
 
             }
 
         }
 
-        private Filter AvgFps = new Filter(100);
-
+        private Filter AvgFps = new Filter(500);
+        private Filter AvgLoad = new Filter(500);
         private void Sampler()
         {
             var count = 0;
@@ -250,37 +258,35 @@ namespace OpenTTDStatsLive
                     }
                     else
                         RefreshCameraPool();
+
                     if (x != MapSizeX || y != MapSizeY)
                     {
                         MapSizeX = x;
                         MapSizeY = y;
 
                         // Update background
-                        RenderMap();
+                        var tilebase = MapData.ReadAs<int>("TileBase"); // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BA68));
+                        rawTileData = new byte[MapSizeX * MapSizeY * 8];
+                        _mTTD.Reader.Read(tilebase, rawTileData);
+                        this.Invoke(new AnonymousSignal(RenderMap));
                         timer_count = 0;
-
-                        lock (Samples)
-                        {
-                            Samples.Clear();
-                        }
+                        Samples.Clear();
                     }
 
                     timer_count++;
-                    if (timer_count >= 600) // 10 seconds
+                    if (timer_count >= 10000/periodTime) // 10 seconds
                     {
                         timer_count = 0;
-                        RenderMap();
+                        var tilebase = MapData.ReadAs<int>("TileBase"); // _mTTD.Reader.ReadInt32(new IntPtr(addr_base + 0xA1BA68));
+                        rawTileData = new byte[MapSizeX * MapSizeY * 8];
+                        _mTTD.Reader.Read(tilebase, rawTileData);
+                        this.Invoke(new AnonymousSignal(RenderMap));
                     }
 
-                    var sample = new TTDSample(_mTTD, addr_base);
-                    //
-
-                    lock (Samples)
-                    {
-                        while (Samples.Count >= SampleSpeed*SamplePeriod)
-                            Samples.RemoveAt(0);
-                        Samples.Add(sample);
-                    }
+                    var sample = new TTDSample(_mTTD);
+                    while (Samples.Count >= SampleSpeed*SamplePeriod)
+                        Samples.RemoveAt(0);
+                    Samples.Add(sample);
                 }
 
                 count++;
@@ -300,6 +306,7 @@ namespace OpenTTDStatsLive
                 var dt = DateTime.Now.Subtract(n);
                 Thread.Sleep(Math.Max(1, Convert.ToInt32(periodTime - dt.TotalMilliseconds)));
                 AvgFps.Add(DateTime.Now.Subtract(n).TotalMilliseconds);
+                AvgLoad.Add(dt.TotalMilliseconds);
             }
         }
 
@@ -319,7 +326,7 @@ namespace OpenTTDStatsLive
 
                 buffer.Value = bufferIndex;
 
-                lbl_status.Text = "Found TTD; " + trains + " trains; " + Math.Round(1000.0/AvgFps.Average,2)+"Hz";
+                lbl_status.Text = "Found TTD; " + trains + " trains; " + Math.Round(1000.0/AvgFps.Average,2)+"Hz/"+Math.Round((1-AvgLoad.Average/AvgFps.Average)*100.0,1)+"%";
             }
         }
 

@@ -36,8 +36,8 @@
             this.tb_samplePeriod = new System.Windows.Forms.TrackBar();
             this.lbl_status = new System.Windows.Forms.Label();
             this.split = new System.Windows.Forms.SplitContainer();
-            this.cb_Camera = new System.Windows.Forms.CheckBox();
             this.cb_draw = new System.Windows.Forms.CheckBox();
+            this.cb_Camera = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.tb_sampleSpeed)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tb_samplePeriod)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.split)).BeginInit();
@@ -67,7 +67,7 @@
             this.tb_sampleSpeed.Maximum = 100;
             this.tb_sampleSpeed.Minimum = 1;
             this.tb_sampleSpeed.Name = "tb_sampleSpeed";
-            this.tb_sampleSpeed.Size = new System.Drawing.Size(129, 32);
+            this.tb_sampleSpeed.Size = new System.Drawing.Size(129, 45);
             this.tb_sampleSpeed.TabIndex = 2;
             this.tb_sampleSpeed.TickFrequency = 5;
             this.tb_sampleSpeed.Value = 1;
@@ -97,7 +97,7 @@
             this.tb_samplePeriod.Maximum = 360;
             this.tb_samplePeriod.Minimum = 15;
             this.tb_samplePeriod.Name = "tb_samplePeriod";
-            this.tb_samplePeriod.Size = new System.Drawing.Size(159, 32);
+            this.tb_samplePeriod.Size = new System.Drawing.Size(159, 45);
             this.tb_samplePeriod.TabIndex = 5;
             this.tb_samplePeriod.TickFrequency = 15;
             this.tb_samplePeriod.Value = 15;
@@ -136,6 +136,17 @@
             this.split.SplitterIncrement = 50;
             this.split.TabIndex = 7;
             // 
+            // cb_draw
+            // 
+            this.cb_draw.AutoSize = true;
+            this.cb_draw.Location = new System.Drawing.Point(593, 30);
+            this.cb_draw.Name = "cb_draw";
+            this.cb_draw.Size = new System.Drawing.Size(85, 17);
+            this.cb_draw.TabIndex = 8;
+            this.cb_draw.Text = "Show speed";
+            this.cb_draw.UseVisualStyleBackColor = true;
+            this.cb_draw.CheckedChanged += new System.EventHandler(this.cb_draw_CheckedChanged);
+            // 
             // cb_Camera
             // 
             this.cb_Camera.AutoSize = true;
@@ -146,19 +157,6 @@
             this.cb_Camera.Text = "Sync Camera";
             this.cb_Camera.UseVisualStyleBackColor = true;
             this.cb_Camera.CheckedChanged += new System.EventHandler(this.cb_Camera_CheckedChanged);
-            // 
-            // cb_draw
-            // 
-            this.cb_draw.AutoSize = true;
-            this.cb_draw.Checked = true;
-            this.cb_draw.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.cb_draw.Location = new System.Drawing.Point(593, 30);
-            this.cb_draw.Name = "cb_draw";
-            this.cb_draw.Size = new System.Drawing.Size(85, 17);
-            this.cb_draw.TabIndex = 8;
-            this.cb_draw.Text = "Show speed";
-            this.cb_draw.UseVisualStyleBackColor = true;
-            this.cb_draw.CheckedChanged += new System.EventHandler(this.cb_draw_CheckedChanged);
             // 
             // TTDStats
             // 
