@@ -62,7 +62,7 @@ namespace SimTelemetry.Domain.Memory
                 {
                     if (Address != 0 && Offset != 0)
                     {
-                        computedAddress = Memory.Reader.ReadInt32(Address) + Offset;
+                        computedAddress = Memory.Reader.ReadInt32(Memory.BaseAddress + Address) + Offset;
                     }
                     else
                     {

@@ -24,11 +24,11 @@ namespace SimTelemetry.Domain.Memory
         public static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
         [DllImport("kernel32.dll")]
         public static extern Int32 GetLastError();
+
         [DllImport("psapi.dll")]
         public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
         [DllImport("psapi.dll")]
         public static extern uint GetMappedFileName(IntPtr hProcess, IntPtr hAddress, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
-
 
         [StructLayout(LayoutKind.Sequential)]
         public struct MEMORY_BASIC_INFORMATION

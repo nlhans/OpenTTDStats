@@ -9,12 +9,6 @@ using System.Timers;
 
 namespace SimTelemetry.Domain.Memory
 {
-    public enum MemoryRegionType
-    {
-        EXECUTE,
-        READ,
-        READWRITE
-    }
     public class MemoryReader
     {
         protected Process _Process;
@@ -88,7 +82,7 @@ namespace SimTelemetry.Domain.Memory
                     if ((regionInfo.State & 0x10000) != 0) // MemoryReaderApi.PageFlags.Free)
                         continue;
 
-                    if(onlyMe)
+                    if (onlyMe)
                     {
                         StringBuilder processName = new StringBuilder(255);
                         MemoryReaderApi.GetMappedFileName(_Process.Handle, memRegionAddr, processName,
@@ -114,106 +108,13 @@ namespace SimTelemetry.Domain.Memory
                 }
                 else
                 {
-                    int err = MemoryReaderApi.GetLastError();
+                    //int err = MemoryReaderApi.GetLastError();
                     //if (err != 0)
                     //    throw new Exception("Failed to scan memory regions.");
                     break; // last block, done!
                 }
             }
         }
-        /*
-        public IEnumerable<uint> Scan(MemoryRegion region, string needle)
-        {
-            var signature = ScanNeedleToObj(needle);
-
-            return ScanRegion(signature, region);
-        }
-
-        public IEnumerable<uint> Scan(MemoryRegionType type, string needle)
-        {
-            var signature = ScanNeedleToObj(needle);
-
-            var results = new List<uint>();
-            foreach(var region in _regions)
-                if (region.MatchesType(type))
-                results.AddRange(ScanRegion(signature, region));
-
-            return results;
-        }
-
-        private IEnumerable<MemorySignatureScanObject> ScanNeedleToObj(string needle)
-        {
-            var signature = new List<MemorySignatureScanObject>();
-            for (int i = 0; i < needle.Length; i += 2)
-            {
-                string sigHex = needle.Substring(i, 2);
-                if (sigHex.Contains("X") && sigHex != "XX") throw new Exception("Signature error at index " + i);
-                if (sigHex.Contains("?") && sigHex != "??") throw new Exception("Signature error at index " + i);
-
-                var signatureObject = new MemorySignatureScanObject();
-                if (sigHex == "XX")
-                    signatureObject = new MemorySignatureScanObject(00, true, false);
-                else if (sigHex == "??")
-                    signatureObject = new MemorySignatureScanObject(00, false, true);
-                else
-                    signatureObject = new MemorySignatureScanObject((byte)Convert.ToUInt32(sigHex, 16), false, false);
-                if (signatureObject.wildcard && i == 0) throw new Exception("Signature can't start with wildcard!");
-                if (signatureObject.target && i == 0) throw new Exception("Signature can't start with target address!");
-                signature.Add(signatureObject);
-            }
-            return signature;
-        }
-
-        private IEnumerable<uint> ScanRegion(IEnumerable< MemorySignatureScanObject> signature, MemoryRegion region)
-        {
-            if (region.Data.Length == 0) return new List<uint>();
-            var results = new List<uint>();
-            var target = new byte[8]; //signature.Count(x => x.target)];
-            byte startByte = signature.FirstOrDefault().data;
-            var startHints = region.Data.IndexesOf(startByte, null);
-
-            //for (ulong b = 0; b < (ulong)region.Data.Length - (ulong)signature.Count(); b++)
-            foreach (var b in startHints)
-            {
-                var j = 0;
-                var t = 0;
-                var fail = false;
-                foreach (var sigByte in signature)
-                {
-                    if (sigByte.wildcard)
-                    {
-                        j++;
-                        continue;
-                    }
-                    if ((b + j) >= region.Data.Length)
-                    {
-                        fail = true;
-                        break;
-                    }
-                    var by = region.Data[b + j];
-
-                    if (sigByte.target)
-                    {
-                        target[t++] = by;
-                    }
-                    else if (sigByte.data != by)
-                    {
-                        fail = true;
-                        break;
-                    }
-
-                    j++;
-                }
-                if (fail)
-                    continue;
-
-                results.Add(BitConverter.ToUInt32(target, 0));
-                //Console.WriteLine("At byte 0x{0} I found the code sig! -> 0x{1:X} === 0x{2:X}", string.Format("{0:X}", b), BitConverter.ToString(target), d);
-
-            }
-            return results;
-        }
-        */
 
         public virtual bool Close()
         {
@@ -428,27 +329,6 @@ namespace SimTelemetry.Domain.Memory
             if (type == MemoryRegionType.EXECUTE && Execute == false) return false;
 
             return true;
-        }
-    }
-
-    public static class IEnumerableExtensions
-    {
-        public static int IndexOf<T>(this IEnumerable<T> obj, T value, IEqualityComparer<T> comparer)
-        {
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            var found = obj
-                .Select((a, i) => new { a, i })
-                .FirstOrDefault(x => comparer.Equals(x.a, value));
-            return found == null ? -1 : found.i;
-        }
-        public static IEnumerable<int> IndexesOf<T>(this IEnumerable<T> obj, T value, IEqualityComparer<T> comparer)
-        {
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            var found = obj
-                .Select((a, i) => new {a, i})
-                .Where(x => comparer.Equals(x.a, value))
-                .Select(x => x.i);
-            return found;
         }
     }
 }
